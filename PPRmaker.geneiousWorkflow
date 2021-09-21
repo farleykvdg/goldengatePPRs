@@ -1,0 +1,116 @@
+<geneiousWorkflows>
+  <XMLSerialisableRootElement name="PPRmaker" author="ian" geneiousVersion="2021.2.2" uniqueId="55a49112-148f-4768-b165-8b7065675b79" revisionNumber="24" description="" bundledIconName="plugin">
+    <workflowElement type="com.biomatters.plugins.workflows.WorkflowElementCustomCode">
+      <code>public static Options getOptions() throws DocumentOperationException {
+	Options options = new Options(getThisClass());
+	options.addStringOption("PPRname","Name of PPR to create:","");
+	options.addStringOption("targetSequence","9 nt target sequence:","");
+	return options;
+}
+
+public static List&lt;AnnotatedPluginDocument&gt; performOperation(List&lt;AnnotatedPluginDocument&gt; documents, Options options,
+													  ProgressListener progressListener) throws DocumentOperationException, DatabaseServiceException {
+
+   String target = ((String) options.getOption("targetSequence").getValue()).toUpperCase();
+      
+   HashMap&lt;Character,String&gt; PPRcode = new HashMap&lt;Character,String&gt;();
+   PPRcode.put('A',"TN");
+   PPRcode.put('C',"NN");
+   PPRcode.put('G',"TD");
+   PPRcode.put('T',"ND");
+   PPRcode.put('U',"ND");
+   
+   StringBuilder aaCombos = new StringBuilder("");
+   for (char nt : target.toCharArray()) {
+   	aaCombos.append(PPRcode.get(nt));
+   }
+   char[] aaCombosArray = aaCombos.toString().toCharArray();
+   
+   HashMap&lt;Integer,Character&gt; PPRvariants = new HashMap&lt;Integer,Character&gt;();
+   PPRvariants.put(0,'A');
+   PPRvariants.put(1,'B');
+   PPRvariants.put(2,'B');
+   PPRvariants.put(3,'C');
+   PPRvariants.put(4,'C');
+   PPRvariants.put(5,'D');
+   PPRvariants.put(6,'D');
+   PPRvariants.put(7,'E');
+   PPRvariants.put(8,'E');
+   PPRvariants.put(9,'A');
+   PPRvariants.put(10,'A');
+   PPRvariants.put(11,'B');
+   PPRvariants.put(12,'B');
+   PPRvariants.put(13,'C');
+   PPRvariants.put(14,'C');
+   PPRvariants.put(15,'D');
+   PPRvariants.put(16,'D');
+   PPRvariants.put(17,'E');
+   
+   int count = 0;
+   char part = '0';
+   char variant = '?';
+   char previousAA = '?';
+   String PPRpart = "";
+   List&lt;AnnotatedPluginDocument&gt; partsToUse1 = new ArrayList&lt;AnnotatedPluginDocument&gt;();
+   List&lt;AnnotatedPluginDocument&gt; partsToUse2 = new ArrayList&lt;AnnotatedPluginDocument&gt;();
+
+   for (char aa : aaCombosArray) {
+		if (count &lt; 9) {
+			part = '1';
+		} else {
+			part = '2';
+		}
+		variant = PPRvariants.get(count);
+		if (count == 0) {
+			PPRpart = (new StringBuilder("")).append(part).append(variant).append(" SS1").append(aa).toString();
+		} else if (count == 17) {
+			PPRpart = (new StringBuilder("")).append(part).append(variant).append(" ").append(aa).toString();
+		} else if (count % 2 == 1) {
+			previousAA = aa;
+			count += 1;
+			continue;
+		} else if (count == 8 || count == 10) {
+			PPRpart = (new StringBuilder("")).append(part).append(variant).append(" ").append(previousAA).append(aa).toString();
+		} else {
+			PPRpart = (new StringBuilder("")).append(variant).append(' ').append(previousAA).append(aa).toString();
+		}
+		for (AnnotatedPluginDocument doc : documents) {
+			if (doc.getName().equals(PPRpart)) {
+				if (count &lt; 9) {
+					partsToUse1.add(doc);
+				} else {
+					partsToUse2.add(doc);
+				}
+			}
+		}
+		count += 1;
+   }
+   
+   String PPRname = (String) options.getOption("PPRname").getValue();
+	WritableDatabaseService partsFolder = (WritableDatabaseService) documents.get(0).getDatabase();
+ 	WritableDatabaseService folder = partsFolder.createChildFolder("Parts for " + PPRname + " N-terminus");
+ 	WritableDatabaseService allDocs = (WritableDatabaseService) PluginUtilities.getGeneiousService("LocalDocuments");
+ 	List&lt;AnnotatedPluginDocument&gt; copiedParts = new ArrayList&lt;AnnotatedPluginDocument&gt;();
+ 	List&lt;AnnotatedPluginDocument&gt; vectorDocs = allDocs.retrieve("pAGM9121");
+ 	AnnotatedPluginDocument vectorDoc = null;
+ 	for (AnnotatedPluginDocument vd : vectorDocs) {
+        if (vd.getName().equals("pAGM9121")) {
+            vectorDoc = folder.addDocumentCopy(vd, ProgressListener.EMPTY);
+            break;
+        }
+    }
+	copiedParts.add(vectorDoc);
+ 	for (AnnotatedPluginDocument doc : partsToUse1) {
+ 		AnnotatedPluginDocument copiedDoc = folder.addDocumentCopy(doc, ProgressListener.EMPTY);
+ 		copiedParts.add(copiedDoc);
+ 	}
+ 	folder = partsFolder.createChildFolder("Parts for " + PPRname + " C-terminus");
+ 	folder.addDocumentCopy(vectorDoc, ProgressListener.EMPTY);
+ 	for (AnnotatedPluginDocument doc : partsToUse2) {
+ 		folder.addDocumentCopy(doc, ProgressListener.EMPTY);
+ 	}
+   return copiedParts;
+}</code>
+    </workflowElement>
+  </XMLSerialisableRootElement>
+</geneiousWorkflows>
